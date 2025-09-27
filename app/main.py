@@ -32,14 +32,17 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+from db.mongo import check_connection
+
+@app.on_event("startup")
+def startup_db_check():
+    if check_connection():
+        print("✅ MongoDB connected successfully")
+    else:
+        print("❌ Failed to connect to MongoDB")
+
 # Import and include users router
 from routes.users.routes import router as users_router
 
 app.include_router(users_router)
 
-@app.get("/")
-def read_root():
-    return {
-        "mongo_url": "Hello",
-        "secret_key": "Hello"
-    }
