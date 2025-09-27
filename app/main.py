@@ -52,7 +52,8 @@ from routes.profiles.routes import router as profiles_router
 from routes.parse_profile.routes import router as parse_router
 from routes.match_scorer.routes import router as match_router
 from routes.red_flag.route import router as flag_router
-from routes.room_hunt.routes import router as room_hunter_router  # NEW
+from routes.room_hunt.routes import router as room_hunter_router  
+from routes.wingman.routes import router as wingman_router
 
 # Include routers
 app.include_router(users_router)
@@ -61,3 +62,4 @@ app.include_router(parse_router)
 app.include_router(match_router)
 app.include_router(flag_router)
 app.include_router(room_hunter_router)  # NEW: Housing matches
+app.include_router(wingman_router)

@@ -8,6 +8,7 @@ __pycache__/
 *.egg
 *.manifest
 *.spec
+*.pyc
 
 # Byte-compiled / optimized / DLL files
 *.so
@@ -61,3 +62,6 @@ dump/
 docker-compose.override.yml
 .venv
 .env
+
+__pycache__/
+*.pyc
