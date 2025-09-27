@@ -243,6 +243,7 @@ def login_user(request: LoginRequest, response: Response):
         user_data["email"],
         user_data.get("listing_id"),
         user_data.get("profile_id"),
+        is_verified=user_data.get("is_verified", False)
     )
 
     # ✅ Save token in DB
