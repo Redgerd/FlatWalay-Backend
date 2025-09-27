@@ -46,8 +46,8 @@ def register_user(request: UserCreate):
         username=request.username,
         password=hashed_password,
         email=request.email,   # ✅ make sure UserCreate has this
-        listing_id=request.listing_id,
-        profile_id=request.profile_id,
+        listing_id="",
+        profile_id="",
         is_verified=False
     )
 
