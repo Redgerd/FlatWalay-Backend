@@ -1,28 +1,37 @@
 from pydantic import BaseModel
 from typing import Optional
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    listing_id: Optional[str] = None
+    profile_id: Optional[str] = None
+    
 class UserResponse(BaseModel):
     id: Optional[str]
     username: str
-    role: str
-    department: Optional[str] = None
+    listing_id: Optional[str] = None
+    profile_id: Optional[str] = None
 
     class Config:
         from_attributes = True
+
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
+
 class LoginResponse(BaseModel):
     id: str
     username: str
-    token: str 
-    role: str
-    department: Optional[str] = None
+    token: str
+    listing_id: Optional[str] = None
+    profile_id: Optional[str] = None
+
 
 class RegisterRequest(BaseModel):
     username: str
     password: str
-    role: Optional[str] = "user"
-    department: Optional[str] = None
+    listing_id: Optional[str] = None
+    profile_id: Optional[str] = None
