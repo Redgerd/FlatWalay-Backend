@@ -59,4 +59,8 @@ dump/
 
 # Docker
 docker-compose.override.yml
-.txt
+.venv
+.env
+
+__pycache__/
+*.pyc
