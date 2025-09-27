@@ -4,23 +4,10 @@ import re
 import json
 from typing import Dict, Any
 from groq import Groq
-from pydantic import BaseModel, Field, conint, ValidationError
+from pydantic import ValidationError
+from models.profile import ProfileCreate, SleepSchedule, Cleanliness, NoiseTolerance, StudyHabits, FoodPref
 
-
-# --- Schema Definition ---
-class RoommateProfileSchema(BaseModel):
-    city: str
-    area: str
-    budget_PKR: conint(ge=0)
-    cleanliness: str
-    noise_tolerance: str
-    sleep_schedule: str
-    study_habits: str
-    food_pref: str
-    additional_notes: str
-
-
-# --- Groq Profile Reader Agent ---
+# Groq Profile Reader Agent
 class GroqProfileReaderAgent:
     PHONE_NUMBER_REGEX = r'(?:\+92|03)\s?[-]?\s?\d{2,3}\s?[-]?\d{7,8}'
 
@@ -36,32 +23,31 @@ class GroqProfileReaderAgent:
         return re.sub(self.PHONE_NUMBER_REGEX, '', text).strip()
 
     def _get_llm_response(self, preprocessed_text: str) -> Dict[str, Any]:
-        """Call Groq LLM and enforce JSON schema output."""
+        """Call Groq LLM and enforce JSON schema output using Enum values."""
         system_prompt = f"""
         You are a Senior Data Analyst parsing unstructured roommate advertisements from Pakistan.
 
-    Your ONLY job is to extract structured roommate profile data into the schema below.
-    ❌ Do NOT add commentary, ❌ Do NOT create new categories.
-    ✅ Only return a valid JSON object.
+        Your ONLY job is to extract structured roommate profile data into the schema below.
+        ❌ Do NOT add commentary, ❌ Do NOT create new categories.
+        ✅ Only return a valid JSON object.
 
-    Use these exact options only (case-sensitive):
+        Use these exact options only (case-sensitive):
 
-    * sleep_schedule: ["Night owl", "Early riser", "Flexible"]
-    * cleanliness: ["Tidy", "Average", "Messy"]
-    * noise_tolerance: ["Quiet", "Moderate", "Loud ok"]
-    * study_habits: ["Online classes", "Late-night study", "Room study", "Library"]
-    * food_pref: ["Flexible", "Non-veg", "Veg"]
+        * sleep_schedule: {[e.value for e in SleepSchedule]}
+        * cleanliness: {[e.value for e in Cleanliness]}
+        * noise_tolerance: {[e.value for e in NoiseTolerance]}
+        * study_habits: {[e.value for e in StudyHabits]}
+        * food_pref: {[e.value for e in FoodPref]}
 
-    If information is missing or ambiguous, pick the closest option or default:
-    - sleep_schedule → "Flexible"
-    - cleanliness → "Average"
-    - noise_tolerance → "Moderate"
-    - study_habits → "Library"
-    - food_pref → "Flexible"
+        If information is missing or ambiguous, pick the closest option or default:
+        - sleep_schedule → "Flexible"
+        - cleanliness → "Average"
+        - noise_tolerance → "Moderate"
+        - study_habits → "Library"
+        - food_pref → "Flexible"
 
-    The final and ONLY output must strictly match this schema:
-        Schema:
-        {RoommateProfileSchema.schema_json(indent=2)}
+        The final and ONLY output must strictly match this schema:
+        {ProfileCreate.schema_json(indent=2)}
         """
 
         chat_completion = self.client.chat.completions.create(
@@ -77,17 +63,17 @@ class GroqProfileReaderAgent:
         return json.loads(chat_completion.choices[0].message.content)
 
     def parse_profile(self, raw_ad_text: str) -> Dict[str, Any]:
-        """Main method: takes raw ad text and returns structured JSON."""
+        """Main method: takes raw ad text and returns structured JSON using ProfileCreate schema."""
         preprocessed_text = self._preprocess(raw_ad_text)
         try:
             llm_output = self._get_llm_response(preprocessed_text)
-            validated_profile = RoommateProfileSchema(**llm_output)
+            validated_profile = ProfileCreate(**llm_output)
             return validated_profile.dict()
         except ValidationError as ve:
             raise ValueError(f"Schema Validation Error: {ve.errors()}")
 
 
-# --- Global agent instance for re-use across the app ---
+# Global agent instance for re-use across the app
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 agent_instance: GroqProfileReaderAgent | None = None
 
