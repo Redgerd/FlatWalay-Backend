@@ -1,12 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class UserCreate(BaseModel):
-    username: str
-    password: str
-    listing_id: Optional[str] = None
-    profile_id: Optional[str] = None
-    
 class UserResponse(BaseModel):
     id: Optional[str]
     username: str

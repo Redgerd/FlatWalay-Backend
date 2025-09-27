@@ -1,0 +1,61 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.dll
+*.dylib
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables file
+*.env
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Coverage / test
+.coverage
+htmlcov/
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+test-reports/
+
+# FastAPI generated files
+*.sqlite3
+instance/
+
+# Mongo dump/backup
+dump/
+*.bson
+*.json
+
+# Docker
+docker-compose.override.yml
