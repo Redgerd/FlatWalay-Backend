@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
-
+from typing import Optional, List
 
 class User(BaseModel):
     id: Optional[str] = Field(alias="_id")
@@ -15,6 +14,9 @@ class User(BaseModel):
         populate_by_name = True
         arbitrary_types_allowed = True
 
+class UserLikes(BaseModel):
+    user_id: str             
+    liked_profile_ids: List[str] = []  
 
 class UserCreate(BaseModel):
     username: str
@@ -23,4 +25,3 @@ class UserCreate(BaseModel):
     listing_id: Optional[str] = None
     email:str
     is_verified: Optional[bool] = False
-
