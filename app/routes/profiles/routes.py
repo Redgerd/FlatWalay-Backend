@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Path, Depends
 from models.profile import ProfileCreate
 from routes.profiles.profiles_response_schemas import ProfileResponse
-from db.mongo import get_profiles_collection
+from db.mongo import get_profiles_collection, get_users_collection
 from bson import ObjectId
 from typing import List
 from utils.jwt_utils import get_user_from_cookie
@@ -12,10 +12,35 @@ router = APIRouter(prefix="/profiles", tags=["Profiles"])
 
 # --- Create Profile ---
 @router.post("/", response_model=ProfileResponse)
-def create_profile(request: ProfileCreate, current_user: UserResponse = Depends(get_user_from_cookie)):
+def create_profile(
+    request: ProfileCreate,
+    current_user: UserResponse = Depends(get_user_from_cookie)
+):
     profiles_collection = get_profiles_collection()
+    users_collection = get_users_collection()
+
+    # Check if user already has a profile
+    user_doc = users_collection.find_one({"_id": ObjectId(current_user.id)})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user_doc.get("profile_id"):
+        raise HTTPException(status_code=400, detail="User already has a profile")
+
+    # Insert the new profile
     result = profiles_collection.insert_one(request.dict())
     db_profile = profiles_collection.find_one({"_id": result.inserted_id})
+
+    # Update the user's profile_id in the users collection
+    update_result = users_collection.update_one(
+        {"_id": ObjectId(current_user.id)},
+        {"$set": {"profile_id": str(result.inserted_id)}}
+    )
+    if update_result.matched_count == 0:
+        # Rollback: delete the profile if user update fails
+        profiles_collection.delete_one({"_id": result.inserted_id})
+        raise HTTPException(status_code=500, detail="Failed to assign profile to user")
+
+    # Return the created profile
     return ProfileResponse(
         id=str(db_profile["_id"]),
         raw_profile_text=db_profile["raw_profile_text"],

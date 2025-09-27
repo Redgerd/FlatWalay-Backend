@@ -426,3 +426,4 @@ def google_login(payload: GoogleAuthSchema, response: Response):
     )
 
     return {"access_token": token, "token_type": "bearer"}
+
