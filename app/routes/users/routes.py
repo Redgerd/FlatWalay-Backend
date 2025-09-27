@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Path, Depends, Response, Query, status
 from models.user import UserCreate
-from routes.users.users_response_schemas import UserResponse, LoginRequest, LoginResponse, EmailRequest, GoogleAuthSchema
+from routes.users.users_response_schemas import UserResponse, LoginRequest, LoginResponse, EmailRequest, GoogleAuthSchema, UserLikes
 from utils.jwt_utils import create_access_token, get_user_from_cookie
-from db.mongo import get_users_collection
+from db.mongo import get_users_collection, get_user_likes_collection
 from passlib.context import CryptContext
 from bson import ObjectId
 from typing import List
@@ -427,3 +427,32 @@ def google_login(payload: GoogleAuthSchema, response: Response):
 
     return {"access_token": token, "token_type": "bearer"}
 
+
+@router.post("/like-profile/{profile_id}")
+def like_profile(profile_id: str, current_user: UserResponse = Depends(get_user_from_cookie)):
+    """Add a profile to the user's liked list"""
+    collection = get_user_likes_collection()
+
+    user_likes = collection.find_one({"user_id": current_user.id})
+    if user_likes:
+        if profile_id in user_likes.get("liked_profile_ids", []):
+            return {"message": "Profile already liked"}
+        collection.update_one({"user_id": current_user.id}, {"$push": {"liked_profile_ids": profile_id}})
+    else:
+        collection.insert_one({"user_id": current_user.id, "liked_profile_ids": [profile_id]})
+
+    return {"message": f"Profile {profile_id} liked successfully"}
+
+@router.post("/unlike-profile/{profile_id}")
+def unlike_profile(profile_id: str, current_user: UserResponse = Depends(get_user_from_cookie)):
+    """Remove a profile from the user's liked list"""
+    collection = get_user_likes_collection()
+    collection.update_one({"user_id": current_user.id}, {"$pull": {"liked_profile_ids": profile_id}})
+    return {"message": f"Profile {profile_id} unliked successfully"}
+
+@router.get("/liked-profiles", response_model=List[str])
+def get_liked_profiles(current_user: UserResponse = Depends(get_user_from_cookie)):
+    """Get all profiles liked by the current user"""
+    collection = get_user_likes_collection()
+    user_likes = collection.find_one({"user_id": current_user.id})
+    return user_likes.get("liked_profile_ids", []) if user_likes else []
