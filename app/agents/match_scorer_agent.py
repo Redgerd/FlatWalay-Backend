@@ -8,9 +8,19 @@ from routes.profiles.profiles_response_schemas import ProfileResponse
 
 # --- Result Schema ---
 class MatchResult(BaseModel):
+    id: str  # profile_id
     profile_id: str
-    score: int
-    reasons: List[str]
+    raw_profile_text: str
+    city: str
+    area: str
+    budget_PKR: int
+    sleep_schedule: str = None
+    cleanliness: str = None
+    noise_tolerance: str = None
+    study_habits: str = None
+    food_pref: str = None
+    compatibility_score: int  # score
+    compatibility_explanation: str  # reasons joined
 
 # --- Main Agent ---
 class MatchScorerAgent:
@@ -85,12 +95,22 @@ class MatchScorerAgent:
                 continue  # Skip the user's own profile
             score_data = self.score_profiles(user_profile_dict, candidate)
             results.append(MatchResult(
+                id=str(candidate["_id"]),
                 profile_id=str(candidate["_id"]),
-                score=score_data["score"],
-                reasons=score_data["reasons"]
+                raw_profile_text=candidate.get("raw_profile_text", ""),
+                city=candidate.get("city", ""),
+                area=candidate.get("area", ""),
+                budget_PKR=candidate.get("budget_PKR", 0),
+                sleep_schedule=candidate.get("sleep_schedule"),
+                cleanliness=candidate.get("cleanliness"),
+                noise_tolerance=candidate.get("noise_tolerance"),
+                study_habits=candidate.get("study_habits"),
+                food_pref=candidate.get("food_pref"),
+                compatibility_score=score_data["score"],
+                compatibility_explanation="; ".join(score_data["reasons"])
             ))
 
-        results.sort(key=lambda x: x.score, reverse=True)
+        results.sort(key=lambda x: x.compatibility_score, reverse=True)
         return results[:top_n]
 
 # --- Singleton instance ---

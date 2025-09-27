@@ -4,11 +4,9 @@ from utils.jwt_utils import get_user_from_cookie
 from routes.users.users_response_schemas import UserResponse
 from models.profile import ProfileCreate
 from agents.profile_reader_agent import  profile_reader
+from routes.parse_profile.schema import ParseProfileRequest
 
 router = APIRouter(prefix="/ai", tags=["AI Profile Reader"])
-
-class ParseProfileRequest(BaseModel):
-    raw_profile_text: str
 
 @router.post("/parse-profile", response_model=ProfileCreate)
 def parse_profile(

@@ -6,6 +6,7 @@ from bson import ObjectId
 from typing import List
 from utils.jwt_utils import get_user_from_cookie
 from routes.users.users_response_schemas import UserResponse
+from pydantic import ValidationError
 
 router = APIRouter(prefix="/profiles", tags=["Profiles"])
 
@@ -16,6 +17,9 @@ def create_profile(
     request: ProfileCreate,
     current_user: UserResponse = Depends(get_user_from_cookie)
 ):
+    print(f"Creating profile for user {current_user.id}")
+    print(f"Request data: {request.dict()}")
+    
     profiles_collection = get_profiles_collection()
     users_collection = get_users_collection()
 
@@ -26,9 +30,13 @@ def create_profile(
     if user_doc.get("profile_id"):
         raise HTTPException(status_code=400, detail="User already has a profile")
 
-    # Insert the new profile
-    result = profiles_collection.insert_one(request.dict())
-    db_profile = profiles_collection.find_one({"_id": result.inserted_id})
+    try:
+        # Insert the new profile
+        result = profiles_collection.insert_one(request.dict())
+        db_profile = profiles_collection.find_one({"_id": result.inserted_id})
+    except Exception as e:
+        print(f"Error creating profile: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to create profile: {str(e)}")
 
     # Update the user's profile_id in the users collection
     update_result = users_collection.update_one(
