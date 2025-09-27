@@ -8,22 +8,25 @@ class UserResponse(BaseModel):
     listing_id: Optional[str] = None
     profile_id: Optional[str] = None
     email: Optional[str] = None
+    is_verified: Optional[bool] = False
 
     class Config:
         from_attributes = True
 
 
 class LoginRequest(BaseModel):
-    username: str
+    email: str
     password: str
 
 
 class LoginResponse(BaseModel):
     id: str
     username: str
+    email: str
     token: str
     listing_id: Optional[str] = None
     profile_id: Optional[str] = None
+    is_verified: Optional[bool] = False
 
 
 class RegisterRequest(BaseModel):

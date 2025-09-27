@@ -19,7 +19,8 @@ class User(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
-    profile_id: str
-    listing_id: str
+    profile_id: Optional[str] = None
+    listing_id: Optional[str] = None
     email:str
+    is_verified: Optional[bool] = False
 

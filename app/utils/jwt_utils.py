@@ -11,13 +11,14 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/token")
 
 
-def create_access_token(user_id: str, username: str, email: str = None, listing_id: str = None, profile_id: str = None, expires_delta: timedelta = None) -> str:
+def create_access_token(user_id: str, username: str, email: str = None, listing_id: str = None, profile_id: str = None, is_verified: bool = False, expires_delta: timedelta = None) -> str:
     payload = {
         "sub": username,
         "id": user_id,
         "email": email,
         "listing_id": listing_id,
         "profile_id": profile_id,
+        "is_verified": is_verified,
     }
 
     # Only add expiration if explicitly requested
@@ -39,6 +40,7 @@ def get_user_from_cookie(access_token: str = Cookie(None)):
         email: str = payload.get("email")
         listing_id = payload.get("listing_id")
         profile_id = payload.get("profile_id")
+        is_verified = payload.get("is_verified", False)
 
         if username is None or user_id is None:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
@@ -47,7 +49,8 @@ def get_user_from_cookie(access_token: str = Cookie(None)):
             username=username, 
             email=email,
             listing_id=listing_id, 
-            profile_id=profile_id
+            profile_id=profile_id,
+            is_verified=is_verified
         )
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")

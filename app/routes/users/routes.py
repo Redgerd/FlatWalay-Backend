@@ -10,6 +10,7 @@ import bcrypt
 from fastapi.security import OAuth2PasswordRequestForm
 import os
 import smtplib
+import secrets
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from google.oauth2 import id_token as google_id_token
@@ -47,28 +48,23 @@ def register_user(request: UserCreate):
         email=request.email,   # ✅ make sure UserCreate has this
         listing_id=request.listing_id,
         profile_id=request.profile_id,
+        is_verified=False
     )
 
     # Insert user
     result = users_collection.insert_one(user.dict(by_alias=True))
     db_user = users_collection.find_one({"_id": result.inserted_id})
 
-    # Create verification token
-    token = create_access_token(
-        str(db_user["_id"]),
-        db_user["username"],
-        db_user["email"],
-        db_user.get("listing_id"),
-        db_user.get("profile_id"),
-    )
+    # Create verification token (simple random string, not JWT)
+    verification_token = secrets.token_urlsafe(32)
 
-    # Update DB with token
+    # Update DB with verification token
     users_collection.update_one(
-        {"_id": result.inserted_id}, {"$set": {"token": token, "is_verified": False}}
+        {"_id": result.inserted_id}, {"$set": {"verification_token": verification_token, "is_verified": False}}
     )
 
     # Send verification email
-    email_request = EmailRequest(email=db_user["email"], token=token)
+    email_request = EmailRequest(email=db_user["email"], token=verification_token)
     send_verification_email(email_request)
 
     return UserResponse(
@@ -99,7 +95,7 @@ def send_verification_email(request: EmailRequest):
         msg["To"] = receiver
         msg["Subject"] = "Verify your email"
 
-        verification_link = f"http://localhost:8000/users/verify?token={request.token}&email={receiver}"
+        verification_link = f"http://localhost:9002/verify-email?token={request.token}&email={receiver}"
         body = f"Click here to verify your email: {verification_link}"
 
         msg.attach(MIMEText(body, "plain"))
@@ -118,17 +114,95 @@ def send_verification_email(request: EmailRequest):
 def verify_email(token: str = Query(...), email: str = Query(...)):
     users = get_users_collection()
     
-    user = users.find_one({"email": email, "verification_token": token})
+    print(f"Verification attempt: email={email}, token={token}")
+    
+    # First, check if user exists by email
+    user = users.find_one({"email": email})
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+        print(f"User not found for email: {email}")
+        raise HTTPException(status_code=400, detail="User not found")
+    
+    print(f"User found: {user.get('username')}, verification_token: {user.get('verification_token')}")
+    
+    # Check if user has verification_token and if it matches
+    if not user.get("verification_token"):
+        print(f"No verification_token found for user: {email}")
+        # If user is already verified, just return success
+        if user.get("is_verified"):
+            print(f"User {email} is already verified")
+            return {"status": "success", "message": "Email already verified!"}
+        else:
+            raise HTTPException(status_code=400, detail="No verification token found. Please request a new verification email.")
+    
+    if user.get("verification_token") != token:
+        print(f"Token mismatch for user: {email}")
+        raise HTTPException(status_code=400, detail="Invalid verification token")
     
     # ✅ Mark verified
     users.update_one(
         {"email": email},
         {"$set": {"is_verified": True}, "$unset": {"verification_token": ""}}
     )
+    
+    # ✅ Create new JWT token with updated verification status
+    new_token = create_access_token(
+        str(user["_id"]),
+        user["username"],
+        user["email"],
+        user.get("listing_id"),
+        user.get("profile_id"),
+        True  # Now verified
+    )
+    
+    # ✅ Update user with new JWT token
+    users.update_one(
+        {"email": email},
+        {"$set": {"token": new_token}}
+    )
 
-    return {"status": "success", "message": "Email verified successfully!"}
+    print(f"Email verification successful for: {email}")
+    return {"status": "success", "message": "Email verified successfully!", "access_token": new_token}
+
+@router.post("/resend-verification")
+def resend_verification_email(email: str):
+    users = get_users_collection()
+    
+    user = users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.get("is_verified"):
+        return {"message": "Email already verified"}
+    
+    # Generate new verification token
+    verification_token = secrets.token_urlsafe(32)
+    
+    # Update user with new verification token
+    users.update_one(
+        {"email": email},
+        {"$set": {"verification_token": verification_token}}
+    )
+    
+    # Send verification email
+    email_request = EmailRequest(email=email, token=verification_token)
+    send_verification_email(email_request)
+    
+    return {"message": "Verification email sent successfully"}
+
+@router.get("/check-verification/{email}")
+def check_verification_status(email: str):
+    users = get_users_collection()
+    
+    user = users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "email": email,
+        "is_verified": user.get("is_verified", False),
+        "has_verification_token": bool(user.get("verification_token")),
+        "username": user.get("username")
+    }
 
 @router.post("/register-user")
 def register_user_public(username: str, password: str, listing_id: str = None, profile_id: str = None, email: str = None):
@@ -152,48 +226,59 @@ def register_user_public(username: str, password: str, listing_id: str = None, p
 @router.post("/login", response_model=LoginResponse)
 def login_user(request: LoginRequest, response: Response):
     users_collection = get_users_collection()
-    user_data = users_collection.find_one({"username": request.username})
+
+    # 🔑 Look up by email instead of username
+    user_data = users_collection.find_one({"email": request.email})
     if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # ✅ Check password
     if not bcrypt.checkpw(request.password.encode("utf-8"), user_data["password"].encode("utf-8")):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
+    # ✅ Create access token
     token = create_access_token(
         str(user_data["_id"]),
         user_data["username"],
-        user_data.get("email"),
+        user_data["email"],
         user_data.get("listing_id"),
         user_data.get("profile_id"),
     )
+
+    # ✅ Save token in DB
     users_collection.update_one({"_id": user_data["_id"]}, {"$set": {"token": token}})
 
+    # ✅ Set cookie
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=False,
         secure=False,   # Set True if HTTPS
-        samesite="lax"  # Or 'none' if cross-site
+        samesite="lax"  # Or "none" if cross-site
     )
 
+    # ✅ Return response
     return LoginResponse(
         id=str(user_data["_id"]),
         username=user_data["username"],
+        email=user_data["email"],
         token=token,
         listing_id=user_data.get("listing_id"),
         profile_id=user_data.get("profile_id"),
+        is_verified=user_data.get("is_verified", False),
     )
 
 
 @router.post("/token")
 def login_token(form_data: OAuth2PasswordRequestForm = Depends()):
     users_collection = get_users_collection()
-    user_data = users_collection.find_one({"username": form_data.username})
+    # Try to find user by email first, then by username for backward compatibility
+    user_data = users_collection.find_one({"email": form_data.username}) or users_collection.find_one({"username": form_data.username})
     if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid email/username or password")
 
     if not bcrypt.checkpw(form_data.password.encode("utf-8"), user_data["password"].encode("utf-8")):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid email/username or password")
 
     token = create_access_token(
         str(user_data["_id"]),
@@ -201,6 +286,7 @@ def login_token(form_data: OAuth2PasswordRequestForm = Depends()):
         user_data.get("email"),
         user_data.get("listing_id"),
         user_data.get("profile_id"),
+        user_data.get("is_verified", False),
     )
     users_collection.update_one({"_id": user_data["_id"]}, {"$set": {"token": token}})
     return {"access_token": token, "token_type": "bearer"}
@@ -323,7 +409,8 @@ def google_login(payload: GoogleAuthSchema, response: Response):
         user["username"],
         user["email"],
         user.get("listing_id"),
-        user.get("profile_id")
+        user.get("profile_id"),
+        user.get("is_verified", True)  # Google users are automatically verified
     )
 
     # Update user with token in database
