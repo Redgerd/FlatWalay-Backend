@@ -44,7 +44,8 @@ def startup_db_check():
 # Import and include users router
 from routes.users.routes import router as users_router
 from routes.profiles.routes import router as profiles_router
-
+from routes.parse_profile.routes import router as parse_router
 
 app.include_router(users_router)
 app.include_router(profiles_router)
+app.include_router(parse_router)
