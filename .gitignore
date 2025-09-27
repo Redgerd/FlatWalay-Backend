@@ -59,4 +59,5 @@ dump/
 
 # Docker
 docker-compose.override.yml
-.txt
+.venv
+.env
