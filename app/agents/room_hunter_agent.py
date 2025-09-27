@@ -2,19 +2,8 @@
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from db.mongo import get_housing_collection
+from models.housing import Housing  # Import full schema
 
-# --- Schema ---
-class HousingMatch(BaseModel):
-    listing_id: str
-    city: str
-    area: str
-    monthly_rent_PKR: int
-    rooms_available: int
-    amenities: List[str]
-    availability: str
-    short_reason: str
-
-# --- Agent ---
 class RoomHunterAgent:
     DEFAULT_REQUIRED_AMENITIES = ["Security guard", "WiFi"]
     MAX_REASON_LENGTH = 500
@@ -74,9 +63,9 @@ class RoomHunterAgent:
                 else:
                     reasons.append(f"{field.replace('_', ' ').title()} differs")
 
-        return {"score": score, "reasons": list(dict.fromkeys(reasons))}  # remove duplicates
+        return {"score": score, "reasons": list(dict.fromkeys(reasons))}
 
-    def get_top_housing_matches(self, profiles: List[Dict[str, Any]], top_n: int = 3) -> List[HousingMatch]:
+    def get_top_housing_matches(self, profiles: List[Dict[str, Any]], top_n: int = 3) -> List[Housing]:
         housing_collection = get_housing_collection()
         listings = list(housing_collection.find({"availability": "Available"}))
 
@@ -98,15 +87,16 @@ class RoomHunterAgent:
         for item in top_listings:
             l = item["listing"]
             reason_text = "; ".join(item["reasons"])[:self.MAX_REASON_LENGTH]
-            results.append(HousingMatch(
-                listing_id=l["listing_id"],
+            results.append(Housing(
+                _id=str(l.get("_id", "")),
                 city=l["city"],
                 area=l["area"],
                 monthly_rent_PKR=l["monthly_rent_PKR"],
                 rooms_available=l.get("rooms_available", 1),
                 amenities=l.get("amenities", []),
                 availability=l.get("availability", "Available"),
-                short_reason=reason_text
+                latitude=l.get("latitude"),
+                longitude=l.get("longitude"),
             ))
         return results
 
