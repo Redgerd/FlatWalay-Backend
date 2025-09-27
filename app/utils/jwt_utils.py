@@ -36,12 +36,17 @@ def get_user_from_cookie(access_token: str = Cookie(None)):
         payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         user_id: str = payload.get("id")
-        listing_id=payload.get("listing_id"),
-        profile_id=payload.get("profile_id"),
+        listing_id=payload.get("listing_id")
+        profile_id=payload.get("profile_id")
 
         if username is None or user_id is None:
             raise HTTPException(status_code=401, detail="Could not validate credentials")
-        return UserResponse(id=user_id, username=username)
+        return UserResponse(
+            id=user_id,
+            username=username,
+            profile_id=profile_id,  
+        )
+
     except ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except JWTError:

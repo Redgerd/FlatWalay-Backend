@@ -192,3 +192,26 @@ def update_user(user_id: str, update: dict):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     return {"detail": "User updated successfully"}
+
+@router.get("/by-token", response_model=UserResponse)
+def get_user_by_token(current_user: UserResponse = Depends(get_user_from_cookie)):
+    """
+    Fetch the full user document using the JWT token.
+    """
+    users_collection = get_users_collection()
+
+    try:
+        obj_id = ObjectId(current_user.id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid user ID in token")
+
+    user_doc = users_collection.find_one({"_id": obj_id})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return UserResponse(
+        id=str(user_doc["_id"]),
+        username=user_doc["username"],
+        listing_id=user_doc.get("listing_id"),
+        profile_id=user_doc.get("profile_id"),
+    )

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from models.profile import ProfileCreate, SleepSchedule, Cleanliness, NoiseTolerance, StudyHabits, FoodPref
 
 # Groq Profile Reader Agent
-class GroqProfileReaderAgent:
+class ProfileReaderAgent:
     PHONE_NUMBER_REGEX = r'(?:\+92|03)\s?[-]?\s?\d{2,3}\s?[-]?\d{7,8}'
 
     def __init__(self, api_key: str, model_name: str = "openai/gpt-oss-120b"):
@@ -75,11 +75,11 @@ class GroqProfileReaderAgent:
 
 # Global agent instance for re-use across the app
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-agent_instance: GroqProfileReaderAgent | None = None
+profile_reader: ProfileReaderAgent | None = None
 
 if GROQ_API_KEY:
     try:
-        agent_instance = GroqProfileReaderAgent(api_key=GROQ_API_KEY)
+        profile_reader = ProfileReaderAgent(api_key=GROQ_API_KEY)
     except Exception as e:
         print(f"⚠ Failed to initialize Groq Agent: {e}")
 else:
