@@ -20,6 +20,9 @@ fs = gridfs.GridFS(db)
 def get_users_collection():
     return db["users"]
 
+def get_user_likes_collection():
+    return db["user_likes"]
+
 def get_housing_collection():
     return db["housing"]
 

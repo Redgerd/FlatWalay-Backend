@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr
 
 class UserResponse(BaseModel):
@@ -12,6 +12,11 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserLikes(BaseModel):
+    user_id: str
+    liked_profile_ids: List[str] = Field(default_factory=list)
 
 
 class LoginRequest(BaseModel):
