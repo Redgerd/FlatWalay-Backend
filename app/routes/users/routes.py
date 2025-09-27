@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Path, Depends, Response
-from routes.users.users_response_schemas import UserResponse, LoginRequest, LoginResponse, UserCreate
+from models.user import UserCreate
+from routes.users.users_response_schemas import UserResponse, LoginRequest, LoginResponse
 from utils.jwt_utils import create_access_token, get_user_from_cookie
 from db.mongo import get_users_collection
 from passlib.context import CryptContext
