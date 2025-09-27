@@ -1,11 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional
+from pydantic import BaseModel, EmailStr
 
 class UserResponse(BaseModel):
     id: Optional[str]
-    username: str
+    username: Optional[str]
     listing_id: Optional[str] = None
     profile_id: Optional[str] = None
+    email: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -29,3 +31,12 @@ class RegisterRequest(BaseModel):
     password: str
     listing_id: Optional[str] = None
     profile_id: Optional[str] = None
+
+
+class EmailRequest(BaseModel):
+    email: EmailStr
+    token: str
+
+class GoogleAuthSchema(BaseModel):
+    """Schema for Google OAuth ID token exchange"""
+    id_token: str
