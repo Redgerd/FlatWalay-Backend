@@ -4,13 +4,13 @@ from typing import Optional
 class User(BaseModel):
     id: Optional[str] = Field(alias="_id")
     username: str
-    password: str  # hashed in DB
+    password: str  
     token: Optional[str] = None
     profile_id: str
     listing_id: str
 
     class Config:
-        populate_by_name = True  # for alias _id <-> id
+        populate_by_name = True  
         arbitrary_types_allowed = True
 
 class UserCreate(BaseModel):
