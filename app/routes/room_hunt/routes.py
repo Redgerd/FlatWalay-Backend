@@ -7,18 +7,17 @@ from db.mongo import get_profiles_collection
 from utils.jwt_utils import get_user_from_cookie
 from routes.users.users_response_schemas import UserResponse
 from agents.room_hunter_agent import room_hunter_agent
-from models.housing import Housing
 
 router = APIRouter(prefix="/ai", tags=["Housing"])
 
 
-@router.post("/top_housing_matches", response_model=List[Housing])
+@router.post("/top_housing_matches")
 def top_housing_matches_route(
     profile_a: Dict[str, Any],
     profile_b: Dict[str, Any],
     current_user: UserResponse = Depends(get_user_from_cookie),
     top_n: int = 10
-):
+) -> List[Dict[str, Any]]:
     if not room_hunter_agent:
         raise HTTPException(status_code=500, detail="RoomHunterAgent not initialized.")
 
@@ -39,10 +38,20 @@ def top_housing_matches_route(
                     "noise_tolerance": db_profile.get("noise_tolerance"),
                     "study_habits": db_profile.get("study_habits"),
                     "food_pref": db_profile.get("food_pref"),
+                    "id": str(db_profile["_id"])  # ensure JSON-serializable
                 })
 
         matches = room_hunter_agent.get_top_housing_matches([profile_a, profile_b], top_n=top_n)
-        return matches or []
+
+        # Convert all ObjectIds to strings in the response
+        json_matches = []
+        for m in matches:
+            match_dict = m.dict() if hasattr(m, "dict") else dict(m)
+            if "_id" in match_dict:
+                match_dict["_id"] = str(match_dict["_id"])
+            json_matches.append(match_dict)
+
+        return json_matches
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error computing housing matches: {e}")

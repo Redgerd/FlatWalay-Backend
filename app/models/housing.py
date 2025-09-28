@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+# --- Base schema for common housing fields ---
 class HousingBase(BaseModel):
     city: str
     area: str
@@ -12,11 +13,13 @@ class HousingBase(BaseModel):
     longitude: Optional[float] = Field(None, description="Longitude coordinate for maps")
 
 
+# --- Schema for creating a new housing listing ---
 class HousingCreate(HousingBase):
     """Schema for creating a new housing listing"""
     pass
 
 
+# --- Schema for updating an existing housing listing ---
 class HousingUpdate(BaseModel):
     """Schema for updating an existing housing listing (all fields optional)"""
     city: Optional[str] = None
@@ -29,9 +32,10 @@ class HousingUpdate(BaseModel):
     longitude: Optional[float] = None
 
 
+# --- Schema returned in responses (including RoomHunter short_reason) ---
 class Housing(HousingBase):
-    """Schema returned in responses, including MongoDB _id"""
-    id: Optional[str] = Field(alias="_id")
+    id: Optional[str] = Field(alias="_id", description="MongoDB ObjectId as string")
+    short_reason: Optional[str] = Field(None, description="Concise explanation why this listing matches the profile")
 
     class Config:
         populate_by_name = True
